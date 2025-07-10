@@ -44,7 +44,6 @@ def process_file(file):
 
         if not content:
             return file.name, "⚠️ File is empty or unreadable.", None, 0
-
         try:
             result = chain.invoke({
                 "text": content
@@ -61,25 +60,30 @@ def process_file(file):
     except Exception as e:
         return file.name, None, handle_file_error(e, file.name), 0
 
+
 if uploaded_files:
     with st.spinner(" Processing files..."):
-        # start_time= time.time()
-        results = []
-        with ThreadPoolExecutor(max_workers=len(uploaded_files)) as executor:
-            futures = [executor.submit(process_file, file) for file in uploaded_files]
+        results_map = {}
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(process_file, file): file.name for file in uploaded_files}
             for future in as_completed(futures):
-                results.append(future.result())
-        # end_time = time.time()
-    for filename, content, output, time_taken in results:
+                result = future.result()
+                results_map[result[0]] = result  
+    for file in uploaded_files:
+        filename = file.name
+        content, output, time_taken = None, None, 0
+        if filename in results_map:
+            _, content, output, time_taken = results_map[filename]
         st.markdown(f"## 📁 {filename}")
-    
-    if time_taken:
-        st.markdown(f"⏱ Processed in {time_taken:.2f} seconds")
-
-    if isinstance(output, str) and (output.startswith("⚠️") or output.startswith("❌") or output.startswith("Error")):
-        st.error(output)
-    elif content and output:
-        st.markdown( output)
-    else:
-        st.warning("⚠️ No content or result available.")
+        # if time_taken > 20:
+        #     st.warning("⚠️ Processing took longer than expected. Please check the file size or content.")
+        #     continue
+        if time_taken:
+            st.markdown(f"⏱ Processed in {time_taken:.2f} seconds")
+        if isinstance(output, str) and (output.startswith("⚠️") or output.startswith("❌") or output.startswith("Error")):
+            st.error(output)
+        elif content and output:
+            st.markdown(output)
+        else:
+            st.warning("⚠️ No content or result available.")
 
