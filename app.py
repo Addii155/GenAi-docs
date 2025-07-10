@@ -50,9 +50,9 @@ def process_file(file):
             })
         except Exception as e:
             if "Token" in str(e) or "length" in str(e) or "too long" in str(e).lower():
-                result = "❌ GenAI Error: Input text too long — the document exceeds the model's token limit."
+                result = " GenAI Error: Input text too long — the document exceeds the model's token limit."
             else:
-                result = f"❌ GenAI Error: {str(e)}"
+                result = f" GenAI Error: {str(e)}"
 
         end_time = time.time()
         return file.name, content, result, end_time - start_time
@@ -62,28 +62,28 @@ def process_file(file):
 
 
 if uploaded_files:
-    with st.spinner(" Processing files..."):
-        results_map = {}
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {executor.submit(process_file, file): file.name for file in uploaded_files}
-            for future in as_completed(futures):
-                result = future.result()
-                results_map[result[0]] = result  
-    for file in uploaded_files:
-        filename = file.name
-        content, output, time_taken = None, None, 0
-        if filename in results_map:
-            _, content, output, time_taken = results_map[filename]
-        st.markdown(f"## 📁 {filename}")
-        # if time_taken > 20:
-        #     st.warning("⚠️ Processing took longer than expected. Please check the file size or content.")
-        #     continue
-        if time_taken:
-            st.markdown(f"⏱ Processed in {time_taken:.2f} seconds")
-        if isinstance(output, str) and (output.startswith("⚠️") or output.startswith("❌") or output.startswith("Error")):
-            st.error(output)
-        elif content and output:
-            st.markdown(output)
-        else:
-            st.warning("⚠️ No content or result available.")
+    if len(uploaded_files)>4 :
+        st.warning("Please upload up to 4 files at a time")
+    else:
+        with st.spinner(" Processing files..."):
+            results_map = {}
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {executor.submit(process_file, file): file.name for file in uploaded_files}
+                for future in as_completed(futures):
+                    result = future.result()
+                    results_map[result[0]] = result  
+        for file in uploaded_files:
+            filename = file.name
+            content, output, time_taken = None, None, 0
+            if filename in results_map:
+                _, content, output, time_taken = results_map[filename]
+            st.markdown(f"## 📁 {filename}")    
+            if time_taken:
+                st.markdown(f"⏱ Processed in {time_taken:.2f} seconds")
+            if isinstance(output, str) and (output.startswith("⚠️") or output.startswith("❌") or output.startswith("Error")):
+                st.error(output)
+            elif content and output:
+                st.markdown(output)
+            else:
+                st.warning("⚠️ No content or result available.")
 
